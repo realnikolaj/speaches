@@ -9,10 +9,10 @@ from speaches.realtime.event_router import EventRouter
 from speaches.types.realtime import (
     NOT_GIVEN,
     ErrorEvent,
+    PartialTurnDetection,
     Session,
     SessionUpdatedEvent,
     SessionUpdateEvent,
-    TurnDetection,
 )
 
 if TYPE_CHECKING:
@@ -49,17 +49,33 @@ def handle_session_update_event(ctx: SessionContext, event: SessionUpdateEvent) 
         ctx.pubsub.publish_nowait(unsupported_field_error("session.output_audio_format"))
     if (
         event.session.turn_detection is not None
-        and isinstance(event.session.turn_detection, TurnDetection)
-        and event.session.turn_detection.prefix_padding_ms != NOT_GIVEN
+        and isinstance(event.session.turn_detection, PartialTurnDetection)
+        and event.session.turn_detection.prefix_padding_ms is not None
     ):
         ctx.pubsub.publish_nowait(unsupported_field_error("session.turn_detection.prefix_padding_ms"))
 
     session_dict = ctx.session.model_dump()
-    session_update_dict = event.session.model_dump(
-        exclude_defaults=True,
-        # https://docs.pydantic.dev/latest/concepts/serialization/#advanced-include-and-exclude
-        exclude={"input_audio_format": True, "output_audio_format": True, "turn_detection": {"prefix_padding_ms"}},
-    )
+
+    # Handle partial turn_detection specially - merge with existing config
+    if (
+        event.session.turn_detection != NOT_GIVEN
+        and isinstance(event.session.turn_detection, PartialTurnDetection)
+        and ctx.session.turn_detection is not None
+    ):
+        existing_td = ctx.session.turn_detection.model_dump()
+        partial_td = event.session.turn_detection.model_dump(exclude_none=True)
+        for key, value in partial_td.items():
+            existing_td[key] = value
+        session_update_dict = event.session.model_dump(
+            exclude_defaults=True,
+            exclude={"input_audio_format": True, "output_audio_format": True, "turn_detection": True},
+        )
+        session_update_dict["turn_detection"] = existing_td
+    else:
+        session_update_dict = event.session.model_dump(
+            exclude_defaults=True,
+            exclude={"input_audio_format": True, "output_audio_format": True, "turn_detection": {"prefix_padding_ms"}},
+        )
 
     logger.debug(f"Applying session configuration update: {session_update_dict}")
     logger.debug(f"Session configuration before update: {session_dict}")

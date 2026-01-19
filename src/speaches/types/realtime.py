@@ -234,6 +234,16 @@ class TurnDetection(BaseModel):
     type: Literal["server_vad"] = "server_vad"
 
 
+class PartialTurnDetection(BaseModel):
+    """TurnDetection with optional fields for partial session.update."""
+
+    create_response: bool | None = None
+    prefix_padding_ms: int | None = None
+    silence_duration_ms: int | None = None
+    threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    type: Literal["server_vad"] = "server_vad"
+
+
 class InputAudioTranscription(BaseModel):
     model: str
     # NOTE: `language` is a custom field not present in the OpenAI API. However, weirdly it can be found at https://github.com/openai/openai-openapi
@@ -310,7 +320,7 @@ class PartialSession(BaseModel):
     temperature: float | NotGiven = NOT_GIVEN
     tool_choice: ToolChoice | NotGiven = NOT_GIVEN
     tools: list[Tool] | NotGiven = NOT_GIVEN
-    turn_detection: TurnDetection | NotGiven = NOT_GIVEN
+    turn_detection: PartialTurnDetection | NotGiven = NOT_GIVEN
     speech_model: str | NotGiven = NOT_GIVEN
     voice: str | NotGiven = NOT_GIVEN
 
