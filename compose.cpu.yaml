@@ -3,13 +3,14 @@
 services:
   speaches:
     extends:
-      file: compose.yaml
+      file: compose.speaches.yaml
       service: speaches
     image: ghcr.io/speaches-ai/speaches:latest-cpu
     build:
       args:
         BASE_IMAGE: ubuntu:24.04
     volumes:
-      - hf-hub-cache:/home/ubuntu/.cache/huggingface/hub
-volumes:
-  hf-hub-cache:
+      - ${HF_HUB_CACHE}:/home/ubuntu/.cache/huggingface/hub
+networks:
+  speaches-network:
+    external: false

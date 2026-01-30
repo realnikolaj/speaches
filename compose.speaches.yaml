@@ -1,0 +1,49 @@
+services:
+  speaches:
+    container_name: speaches
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    build:
+      dockerfile: Dockerfile
+      context: .
+      platforms:
+        - linux/amd64
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./uv.lock
+        - action: sync+restart
+          path: ./src
+          target: /home/ubuntu/speaches/src
+    env_file:
+      - path: speaches/override.env
+        required: false
+    #healthcheck:
+    #  test: ["CMD", "curl", "--fail", "http://0.0.0.0:34331/health"] # TODO: won't work if a user changes the port
+    #  interval: 30s
+    #  timeout: 10s
+    # retries: 3
+    # start_period: 5s
+    ports:
+      - ${SPEACHES_HOST_PORT}:8000
+    volumes:
+      - ${HF_HUB_CACHE}:/home/ubuntu/.cache/huggingface
+    networks:
+      - speaches-network
+
+  speaches-init:
+    # Same image as used for the routines
+    # for minimal overhead
+    image: denoland/deno:distroless
+    container_name: speaches-init
+    depends_on:
+      speaches:
+        condition: service_started
+    env_file:
+      - ./speaches/override.env
+    volumes:
+      - ./speaches/init_entrypoint.ts:/init_entrypoint.ts
+    entrypoint: deno run -A init_entrypoint.ts
+    networks:
+      - speaches-network
+
