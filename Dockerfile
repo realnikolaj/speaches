@@ -37,6 +37,13 @@ RUN --mount=type=cache,target=/home/ubuntu/.cache/uv,uid=1000,gid=1000 \
 # Creating a directory for the cache to avoid the following error:
 # PermissionError: [Errno 13] Permission denied: '/home/ubuntu/.cache/huggingface/hub'
 # This error occurs because the volume is mounted as root and the `ubuntu` user doesn't have permission to write to it. Pre-creating the directory solves this issue.
+# Register ctranslate2's bundled cuDNN 9.1 in ldconfig so it's found at runtime
+# even when NVIDIA runtime overrides LD_LIBRARY_PATH. Must run as root.
+USER root
+RUN echo "/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/ctranslate2.libs" > /etc/ld.so.conf.d/ctranslate2.conf \
+    && echo "/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/nvidia/cudnn/lib" >> /etc/ld.so.conf.d/ctranslate2.conf \
+    && ldconfig
+USER ubuntu
 RUN mkdir -p $HOME/.cache/huggingface/hub
 ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=8000
