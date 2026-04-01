@@ -76,9 +76,14 @@ def vad_detection_flow(
             audio_start_ms=input_audio_buffer.vad_state.audio_start_ms,
         )
 
-    else:  # noqa: PLR5501
+    else:
+        # Guard: only fire speech_stopped once per speech segment.
+        # Without this, every silent chunk re-fires because audio_start_ms
+        # stays set while audio_end_ms gets overwritten repeatedly.
+        if input_audio_buffer.vad_state.audio_end_ms is not None:
+            return None
+
         if speech_timestamp is None:
-            # TODO: not quite correct. dependent on window size
             input_audio_buffer.vad_state.audio_end_ms = (
                 input_audio_buffer.duration_ms - turn_detection.prefix_padding_ms
             )
@@ -87,11 +92,10 @@ def vad_detection_flow(
                 audio_end_ms=input_audio_buffer.vad_state.audio_end_ms,
             )
 
-        elif speech_timestamp.end < 3000 and input_audio_buffer.duration_ms > 3000:  # FIX: magic number
+        elif speech_timestamp.end < 3000 and input_audio_buffer.duration_ms > 3000:
             input_audio_buffer.vad_state.audio_end_ms = (
                 input_audio_buffer.duration_ms - turn_detection.prefix_padding_ms
             )
-
             return InputAudioBufferSpeechStoppedEvent(
                 item_id=input_audio_buffer.id,
                 audio_end_ms=input_audio_buffer.vad_state.audio_end_ms,
