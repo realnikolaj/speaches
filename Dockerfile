@@ -42,7 +42,11 @@ ENV UVICORN_HOST=0.0.0.0
 ENV UVICORN_PORT=8000
 ENV PATH="$HOME/speaches/.venv/bin:$PATH"
 # CTranslate2 bundles its own cuDNN libs — ensure they're found before system libs.
-ENV LD_LIBRARY_PATH="/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/ctranslate2.libs:/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/nvidia/cudnn/lib:/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
+# Write ldconfig conf so ctranslate2's bundled cuDNN 9.1 is found even when
+# NVIDIA runtime overwrites LD_LIBRARY_PATH at container start.
+RUN echo "/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/ctranslate2.libs" > /etc/ld.so.conf.d/ctranslate2.conf \
+    && echo "/home/ubuntu/speaches/.venv/lib/python3.12/site-packages/nvidia/cudnn/lib" >> /etc/ld.so.conf.d/ctranslate2.conf \
+    && ldconfig
 # https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables#donottrack
 # https://www.reddit.com/r/StableDiffusion/comments/1f6asvd/gradio_sends_ip_address_telemetry_by_default/
 ENV DO_NOT_TRACK=1
