@@ -86,13 +86,17 @@ async def realtime(
     await ws.accept()
     logger.info(f"Accepted websocket connection with intent: {intent}")
 
-    completion_client = AsyncOpenAI(
+    # Use real TCP for both clients — ASGI transport from DI bypasses
+    # middleware stack, causing fastapi_middleware_astack AssertionError.
+    oai_client = AsyncOpenAI(
         base_url=f"http://{config.host}:{config.port}/v1",
         api_key=config.api_key.get_secret_value() if config.api_key else "cant-be-empty",
         max_retries=0,
-    ).chat.completions
+    )
+    completion_client = oai_client.chat.completions
+    realtime_transcription_client = oai_client.audio.transcriptions
     ctx = SessionContext(
-        transcription_client=transcription_client,
+        transcription_client=realtime_transcription_client,
         completion_client=completion_client,
         vad_model_manager=executor_registry.vad.model_manager,
         session=create_session_object_configuration(model, intent, language, transcription_model),
